@@ -46,10 +46,8 @@ public class JergoViewer implements BikeListener {
 	double currentDistance  = 0;
 	double lastDistance     = 0;
 	int    currentStepIndex = 0;
-	private KMLHelper kml;
 	
 	public JergoViewer(KMLHelper kml) {
-		this.kml = kml;
 		this.path = kml.getPath();
 	}
 
@@ -60,20 +58,14 @@ public class JergoViewer implements BikeListener {
 
 		BikeConnector connector;
 		String dataFilename = "simulator.data";
-		String fileName;
-		
-		fileName =  "c:/users/briac/desktop/Scenictokyo.kml";
-		fileName = "c:/users/briac/desktop/VerrieresChatillon.kml";
-		fileName = "c:/users/briac/desktop/SanFrancisco-NobHill-RussianHill-TelegraphHill-2012.kml";
-		
-		KMLHelper kml = new KMLHelper(new File(fileName));
-		JergoViewer jv = new JergoViewer(kml);
 
-		//jv.testPathKML();
+		File kmlDir = new File("C:/Users/briac/git/jergoviewer/briac.net/kml");
+		
+		KMLHelper kml = new KMLHelper(new File(kmlDir, "Tokyo.kml"));
+		JergoViewer jv = new JergoViewer(kml);
 		
 		if (TEST)
 		{
-			//dataFromSession("simulator.session", dataFilename);
 			connector = new CustomBikeReplay(dataFilename);
 		}
 		else
@@ -89,6 +81,7 @@ public class JergoViewer implements BikeListener {
 		
 		// TODO - 
 		//		* Auto stop after 20 sec of inactivity ?
+		//      * Increase/decrease ergometer power when climbing/going down
 		while (true) {
 			try {
 				connector.sendGetData();
@@ -146,7 +139,8 @@ public class JergoViewer implements BikeListener {
 		{
 			distance = lastDistance + (new Double(data.getSpeed()) / 100);
 			
-			// TODO Add a slight coef to account for the server / browser delay( distance * 1.1 ?)
+			//  Add a slight coef to account for the server / browser delay( distance * 1.1 ?)
+			distance = distance * 1.1;
 			
 			// Don't go over the indicated bike distance
             if (distance > bikeDistance + 100) {
@@ -217,87 +211,5 @@ public class JergoViewer implements BikeListener {
 	public void bikeDestPowerChanged(int change) {
 		System.out.println("// bikeDestPowerChanged: " + change + " => " + (change*5));
 	}
-
-	
-	/** test */
-	void dataFromSession(String sessionFilename, String dataFile)
-			throws IOException {
-		BikeSession bs = new BikeSession(new File(sessionFilename));
-
-		DataOutputStream out = new DataOutputStream(new FileOutputStream(
-				new File(dataFile)));
-		ArrayList<MiniDataRecord> data = bs.getData();
-
-		Calendar startCalendar = Calendar.getInstance();
-		long startMs = startCalendar.getTimeInMillis();
-		Calendar runCalendar = (Calendar) startCalendar.clone();
-
-		// https://github.com/kahara/pyergometer/blob/master/data/2012-06-03T17:59:06.csv
-
-		// distance = time * speed;
-
-		int distance = 0;
-
-		for (MiniDataRecord d : data) {
-			// 60 rpm = 9,5km/h
-			// speed = 10 * (power * 0.15833)
-			double speed = Math.ceil(d.getPedalRpm() * 1.583333333);
-
-			// distance = speed * time ( time = 1s / speed in km/h*10)
-			distance += speed / 30.5; // XXX should be 36? (s/60/60*10)
-
-			runCalendar.add(Calendar.SECOND, 1);
-
-			long runMs = runCalendar.getTimeInMillis();
-			long diff = runMs - startMs;
-			int secs = (int) (diff / 1000);
-
-			int hours = secs / 3600, remainder = secs % 3600, minutes = remainder / 60, seconds = remainder % 60;
-
-			String disHour = (hours < 10 ? "0" : "") + hours, disMinu = (minutes < 10 ? "0" : "")
-					+ minutes, disSec = (seconds < 10 ? "0" : "") + seconds;
-			String length = disHour + ":" + disMinu + ":" + disSec/* + ".0" */;
-
-			out.writeInt(d.getPulse()); // pulse
-			out.writeInt(d.getPedalRpm()); // pedalRpm
-			out.writeInt((int) speed); // speed
-			out.writeInt((int)((float)distance / 100)); // distance
-			out.writeInt(d.getPower()); // destPower
-			out.writeInt(0); // energy
-			out.writeUTF(length); // time
-			out.writeInt(0); // realPower
-		}
-
-		out.flush();
-		out.close();
-	}
-	
-	
-	
-
-	void testPathKML() {
-		double totalDistance = 0;
-		
-		int i = 0;
-		for (LatLngExtra l : path)
-		{
-			if ( i > 0)
-			{
-				LatLngExtra start = path.get(i-1);
-				LatLngExtra end   = path.get(i);
-
-				double distance = LatLngTool.distance(start, end, LengthUnit.METER);
-				totalDistance += Math.floor(distance);
-				
-				int bearing = (int) Math.round(LatLngTool.initialBearing(start, end));
-				System.out.println(i + ":" + /*start + "/" + end +*/ ":\t" + Math.round(distance) + " - " + bearing + " = " + Math.round(totalDistance));				
-			}
-
-			i++;
-		}
-		System.out.println(path); 
-		System.exit(43);
-	}
-
 
 }
