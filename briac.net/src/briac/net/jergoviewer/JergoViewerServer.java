@@ -32,7 +32,6 @@ public class JergoViewerServer extends NanoHTTPD {
 		JergoViewerServer server = new JergoViewerServer("localhost", 8282, null);
 		server.start();
 		server.stop();
-		System.out.println("Server stopped.\n");
 	}
 
 	public void startServer() throws IOException, InterruptedException {
@@ -108,8 +107,6 @@ public class JergoViewerServer extends NanoHTTPD {
 			String s = f.getName().replaceFirst("\\.kml$", "");
 			jsa.put(s);
 		}
-
-		System.out.println(">>>" + jsa.toString());
 		
 		return new NanoHTTPD.Response(Status.OK, "application/json", jsa.toString());
 	}
