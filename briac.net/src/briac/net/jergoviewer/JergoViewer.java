@@ -3,13 +3,16 @@ package briac.net.jergoviewer;
 import gnu.io.UnsupportedCommOperationException;
 
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.io.InputStream;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
+import java.util.Properties;
 
 import org.jergometer.communication.BikeConnector;
 import org.jergometer.communication.BikeException;
@@ -22,16 +25,22 @@ import org.json.JSONObject;
 public class JergoViewer extends Thread implements BikeListener, Runnable{
 
 	private static final String STREETVIEW_URL = "http://maps.googleapis.com/maps/api/streetview";
-	private static final String STREETVIEW_KEY = "AIzaSyB2rIeVeFVjygF-MqobdN3giz_SnZkiJ7M";
 	private static final int STREETVIEW_WIDTH  = 640;
 	private static final int STREETVIEW_HEIGHT = 450;
 	
-	private static final String SERIAL_PORT = "COM4";
+	static final File JSON_FILE =  new File("run.json");
+	
+	// Default configuration properties
+	private static final String DEFAULT_KML_FILE = "Paris.kml";
+	private static final String DEFAULT_SERIAL_PORT = "COM4";
+	private static final String DEFAULT_KML_DIR = "kml";
+	private static final String DEFAULT_HOST = "localhost";
+	private static final String DEFAULT_PORT = "8282";
+	private static final String DEFAULT_DESBUG_SESSION = "simulator.data";
 
-	static final File JSON_FILE =  new File("www/run.json");
 
 	private static final int BIKE_DELAY = 1000;
-	private static final boolean TEST = true;
+	private boolean isDebug = false;
 	private FileWriter dataFile;
 	
 	List<LatLngExtra> path = new ArrayList<LatLngExtra>();
@@ -40,6 +49,7 @@ public class JergoViewer extends Thread implements BikeListener, Runnable{
 	double lastAltitude     = 0;
 	int    currentStepIndex = 0;
 	private BikeConnector connector;
+	private String apiKey = "";
 	
 	public JergoViewer(KMLHelper kml) {
 		this.path = kml.getPath();
@@ -48,16 +58,27 @@ public class JergoViewer extends Thread implements BikeListener, Runnable{
 	public static void main(String[] args) throws BikeException,
 			UnsupportedCommOperationException, IOException,
 			InterruptedException {
-		
-		String dataFilename = "simulator.data";
 
-		File kmlDir = new File("kml");
+		// Load properties file for custom configuration
+		Properties prop = new Properties();
+		InputStream in = new FileInputStream("jergoviewer.properties");
+		prop.load(in);
+		in.close();
+
 		
-		KMLHelper kml = new KMLHelper(new File(kmlDir, "SanFrancisco.kml"));
+		String dataFilename = prop.getProperty("debug.session", DEFAULT_DESBUG_SESSION);
+
+		File kmlDir = new File(prop.getProperty("kml.directory",DEFAULT_KML_DIR));
+		
+		KMLHelper kml = new KMLHelper(new File(kmlDir, prop.getProperty("kml.file",DEFAULT_KML_FILE)));
 		JergoViewer jv = new JergoViewer(kml);
 		
+		jv.apiKey = prop.getProperty("streetview.key", "");
+		
 		BikeConnector connector;
-		if (TEST)
+		
+		jv.isDebug = Boolean.parseBoolean(prop.getProperty("debug", "false"));
+		if (jv.isDebug)
 		{
 			connector = new CustomBikeReplay(dataFilename);
 		}
@@ -69,13 +90,14 @@ public class JergoViewer extends Thread implements BikeListener, Runnable{
 			jv.dataFile = new FileWriter( new File("sessions/session_" + df.format(new Date())) );
 		}
 		
-		jv.setConnector(SERIAL_PORT, connector);
+		jv.setConnector(prop.getProperty("serial.port",DEFAULT_SERIAL_PORT), connector);
 		
 		// Start Bike data thread
 		jv.start();
 		
 		// Start Web server thread
-		JergoViewerServer server = new JergoViewerServer("localhost", 8282, jv);
+		JergoViewerServer server = new JergoViewerServer(prop.getProperty("server.host", DEFAULT_HOST), Integer.parseInt(
+				prop.getProperty("server.port", DEFAULT_PORT), 10), jv);
 		server.start();
 	}
 
@@ -91,7 +113,7 @@ public class JergoViewer extends Thread implements BikeListener, Runnable{
 	
 	public void setConnector(String serialPort, BikeConnector connector) throws BikeException, UnsupportedCommOperationException, IOException {
 		this.connector = connector;
-		connector.connect(SERIAL_PORT, this);
+		connector.connect(serialPort, this);
 	}
 
 	public void processBikeData() throws InterruptedException, IOException {
@@ -225,15 +247,13 @@ public class JergoViewer extends Thread implements BikeListener, Runnable{
 		System.out.println(jso.toString());
 		
 		try {
-			FileWriter fos = new FileWriter(JSON_FILE);
+			FileWriter fos = new FileWriter("www/" + JSON_FILE);
 			fos.write(jso.toString());
-			
-			
-			
+
 			fos.flush();
 			fos.close();
 			
-			if  (! TEST)
+			if  (! isDebug)
 			{
 				dataFile.write(jso.toString());
 				dataFile.write(",\n");
@@ -250,7 +270,7 @@ public class JergoViewer extends Thread implements BikeListener, Runnable{
 		return String.format(
 				"%s?sensor=false&key=%s&size=%dx%d&location=%.4f,%.4f&heading=%d", 
 					STREETVIEW_URL, 
-					STREETVIEW_KEY, 
+					apiKey, 
 					STREETVIEW_WIDTH, 
 					STREETVIEW_HEIGHT, 
 					point.getLatitude(), 
