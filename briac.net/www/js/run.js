@@ -6,7 +6,7 @@ $(function () {
         runMap, marker, runTimer, beats = [], speeds = [], alts = [], powers = [];
 
     $("#share").share({
-        url: "http://briac.net/jergoviewer",
+        url: "https://github.com/briacp/jergoviewer",
         text: "StreetView in you living room while you exercise"
     });
 

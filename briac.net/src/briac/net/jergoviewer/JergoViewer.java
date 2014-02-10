@@ -19,7 +19,7 @@ import org.jergometer.model.DataRecord;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-public class JergoViewer implements BikeListener {
+public class JergoViewer extends Thread implements BikeListener, Runnable{
 
 	private static final String STREETVIEW_URL = "http://maps.googleapis.com/maps/api/streetview";
 	private static final String STREETVIEW_KEY = "AIzaSyB2rIeVeFVjygF-MqobdN3giz_SnZkiJ7M";
@@ -28,11 +28,10 @@ public class JergoViewer implements BikeListener {
 	
 	private static final String SERIAL_PORT = "COM4";
 
-	static final File JSON_FILE =  new File("c:/xampp/htdocs/jergoviewer/run.json");
+	static final File JSON_FILE =  new File("www/run.json");
 
 	private static final int BIKE_DELAY = 1000;
 	private static final boolean TEST = true;
-	private static BikeConnector connector;
 	private FileWriter dataFile;
 	
 	List<LatLngExtra> path = new ArrayList<LatLngExtra>();
@@ -40,6 +39,7 @@ public class JergoViewer implements BikeListener {
 	double lastDistance     = 0;
 	double lastAltitude     = 0;
 	int    currentStepIndex = 0;
+	private BikeConnector connector;
 	
 	public JergoViewer(KMLHelper kml) {
 		this.path = kml.getPath();
@@ -51,11 +51,12 @@ public class JergoViewer implements BikeListener {
 		
 		String dataFilename = "simulator.data";
 
-		File kmlDir = new File("C:/Users/briac/git/jergoviewer/briac.net/kml");
+		File kmlDir = new File("kml");
 		
 		KMLHelper kml = new KMLHelper(new File(kmlDir, "SanFrancisco.kml"));
 		JergoViewer jv = new JergoViewer(kml);
 		
+		BikeConnector connector;
 		if (TEST)
 		{
 			connector = new CustomBikeReplay(dataFilename);
@@ -65,15 +66,42 @@ public class JergoViewer implements BikeListener {
 			connector = new KettlerBikeConnector();
 			
 			DateFormat df = new SimpleDateFormat("yyyy-MM-dd-hh-mm-ss");
-			jv.dataFile = new FileWriter( new File("session_" + df.format(new Date())) );
-			//bsim.connect(SERIAL_PORT, jv);
+			jv.dataFile = new FileWriter( new File("sessions/session_" + df.format(new Date())) );
 		}
 		
-		connector.connect(SERIAL_PORT, jv);
+		jv.setConnector(SERIAL_PORT, connector);
 		
+		// Start Bike data thread
+		jv.start();
+		
+		// Start Web server thread
+		JergoViewerServer server = new JergoViewerServer("localhost", 8282, jv);
+		server.start();
+	}
+
+
+	@Override
+	public void run() {
+		try {
+			processBikeData();
+		} catch (InterruptedException | IOException e) {
+			e.printStackTrace();
+		}
+	}
+	
+	public void setConnector(String serialPort, BikeConnector connector) throws BikeException, UnsupportedCommOperationException, IOException {
+		this.connector = connector;
+		connector.connect(SERIAL_PORT, this);
+	}
+
+	public void processBikeData() throws InterruptedException, IOException {
 		// TODO - 
 		//		* Auto stop after 20 sec of inactivity ?
 		//      * Increase/decrease ergometer power when climbing/going down
+		if (dataFile != null)
+		{
+			dataFile.write("[\n");	
+		}
 		while (true) {
 			try {
 				connector.sendGetData();
@@ -83,17 +111,21 @@ public class JergoViewer implements BikeListener {
 			{
 				break;
 			}
-
+		}
+		
+		if (dataFile != null)
+		{
+			dataFile.write("]\n");
+			dataFile.flush();
+			dataFile.close();
 		}
 
 		connector.close();
-		System.out.println("End of data");
 	}
 
 	@Override
 	public void bikeAck() {
 		System.out.println("bikeAck");
-
 	}
 	
 	private JSONObject pathJson(LatLngExtra l)
@@ -236,5 +268,6 @@ public class JergoViewer implements BikeListener {
 	public void bikeDestPowerChanged(int change) {
 		System.out.println("// bikeDestPowerChanged: " + change + " => " + (change*5));
 	}
+
 
 }
