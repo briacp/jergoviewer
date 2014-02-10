@@ -4,9 +4,11 @@
     <title>JErgoViewer</title>
     <link href="http://fonts.googleapis.com/css?family=Inconsolata:700|Montserrat:400,700" rel="stylesheet" type="text/css"/>
     <script type="text/javascript" src="js/vendor/jquery-2.1.0.min.js"></script>
-    <script type="text/javascript" src="js/vendor/kinetic-v5.0.1.min.js"></script>
+    <script type="text/javascript" src="js/vendor/share.min.js"></script>
+    <!--script type="text/javascript" src="js/vendor/kinetic-v5.0.1.min.js"></script-->
     <script type="text/javascript" src="https://maps.googleapis.com/maps/api/js?sensor=false"></script>
     <script type="text/javascript" src="js/vendor/sprintf.min.js"></script>
+    <script type="text/javascript" src="js/vendor/jquery.sparkline.min.js"></script>
     <script type="text/javascript" src="js/run.js"></script>
     <link rel="stylesheet" type="text/css" href="css/run.css"/>
   </head>
@@ -19,15 +21,25 @@
       <img id="heart" height="91" width="100" src="img/heart.png"/>
       <div id="heartbeat">-</div>
       <div id="info">-</div>
-      <div class="center1">
-        <div class="center2" id="time">-</div>
+      <div class="center1" style="top:0">
+        <div class="fixed center2" id="time">-</div>
       </div>
-      <div id="distance">- km</div>
+      <div class="fixed" id="distance">- km</div>
       <div id="map" ></div>
       <div id="controls">
-        <button id="stopRun">Stop Run</button>
-        <button id="showInfo">Info</button>
-        <button id="showMap">Map</button>
+        <button title="Show/Hide debug information" id="showInfo"><img src="img/info_12x24.png" /><span>Info</span></button>
+        <button title="Show/Hide Map" id="showMap"><img src="img/map_pin_stroke_15x24.png" /><span>Map</span></button>
+        <button title="Show/Hide Graph" id="showSparks"><img src="img/image_24x24.png" /><span>Graphs</span></button>
+        <button title="Stop the run" id="stopRun"><img src="img/stop_24x24.png" /><span>Stop</span></button>
+      </div>
+      <div class="center1" style="bottom:-75px">
+        <div class="center2" id="share"></div>
+      </div>
+      <div id="sparks">
+        <div id="sparkHeart"></div>
+        <div id="sparkSpeed"></div>
+        <div id="sparkAltitude"></div>
+        <div id="sparkPower"></div>
       </div>
     </div>
   </body>

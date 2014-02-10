@@ -2,15 +2,12 @@ package briac.net.jergoviewer;
 
 import gnu.io.UnsupportedCommOperationException;
 
-import java.io.DataOutputStream;
 import java.io.File;
-import java.io.FileOutputStream;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
-import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
 
@@ -18,14 +15,9 @@ import org.jergometer.communication.BikeConnector;
 import org.jergometer.communication.BikeException;
 import org.jergometer.communication.BikeListener;
 import org.jergometer.communication.KettlerBikeConnector;
-import org.jergometer.model.BikeSession;
 import org.jergometer.model.DataRecord;
-import org.jergometer.model.MiniDataRecord;
 import org.json.JSONException;
 import org.json.JSONObject;
-
-import com.javadocmd.simplelatlng.LatLngTool;
-import com.javadocmd.simplelatlng.util.LengthUnit;
 
 public class JergoViewer implements BikeListener {
 
@@ -40,11 +32,13 @@ public class JergoViewer implements BikeListener {
 
 	private static final int BIKE_DELAY = 1000;
 	private static final boolean TEST = true;
-
+	private static BikeConnector connector;
+	private FileWriter dataFile;
 	
 	List<LatLngExtra> path = new ArrayList<LatLngExtra>();
 	double currentDistance  = 0;
 	double lastDistance     = 0;
+	double lastAltitude     = 0;
 	int    currentStepIndex = 0;
 	
 	public JergoViewer(KMLHelper kml) {
@@ -55,13 +49,11 @@ public class JergoViewer implements BikeListener {
 			UnsupportedCommOperationException, IOException,
 			InterruptedException {
 		
-
-		BikeConnector connector;
 		String dataFilename = "simulator.data";
 
 		File kmlDir = new File("C:/Users/briac/git/jergoviewer/briac.net/kml");
 		
-		KMLHelper kml = new KMLHelper(new File(kmlDir, "Tokyo.kml"));
+		KMLHelper kml = new KMLHelper(new File(kmlDir, "SanFrancisco.kml"));
 		JergoViewer jv = new JergoViewer(kml);
 		
 		if (TEST)
@@ -73,8 +65,8 @@ public class JergoViewer implements BikeListener {
 			connector = new KettlerBikeConnector();
 			
 			DateFormat df = new SimpleDateFormat("yyyy-MM-dd-hh-mm-ss");
-			BikeConnector bsim = new CustomConnectorSimulatorRecord(new File("session_" + df.format(new Date())));
-			bsim.connect(SERIAL_PORT, jv);
+			jv.dataFile = new FileWriter( new File("session_" + df.format(new Date())) );
+			//bsim.connect(SERIAL_PORT, jv);
 		}
 		
 		connector.connect(SERIAL_PORT, jv);
@@ -139,8 +131,8 @@ public class JergoViewer implements BikeListener {
 		{
 			distance = lastDistance + (new Double(data.getSpeed()) / 100);
 			
-			//  Add a slight coef to account for the server / browser delay( distance * 1.1 ?)
-			distance = distance * 1.1;
+			//  Add a slight coef to account for the server / browser delay( distance * 1.001 ?)
+			//distance = distance * 1.001;
 			
 			// Don't go over the indicated bike distance
             if (distance > bikeDistance + 100) {
@@ -157,11 +149,33 @@ public class JergoViewer implements BikeListener {
 		lastDistance  = distance;
 		
 		JSONObject jso = new JSONObject(data);
+
+		double deltaAltitude = point.getAltitude() - lastAltitude;
+		lastAltitude = point.getAltitude();
+
+		// Modify power according to altitude change
+		try {
+			if (deltaAltitude > 5)
+			{
+				connector.sendSetPower(data.getDestPower() + 5);
+			}
+			else if (deltaAltitude < 5)
+			{
+				connector.sendSetPower(data.getDestPower() - 5);
+			}
+		} catch (IOException e) {
+			System.err.println("Couldn't change power: " + e.getMessage());
+		}
+
+		// Calculate pace
+		double pace = 1 / (new Double(data.getSpeed())) * 600;
 		
 		try {
+			jso.put("deltaAltitude", String.format("%.2f", deltaAltitude));
 			jso.put("calcDistance", Math.round(distance));
+			jso.put("pace", String.format("%.2f", pace));
 			jso.put("point", pathJson(point));
-			
+
 			jso.put("img", getStreetViewUrl(point));
 			
 			if (path.size() > currentStepIndex)
@@ -177,13 +191,24 @@ public class JergoViewer implements BikeListener {
 		}
 
 		System.out.println(jso.toString());
-
+		
 		try {
 			FileWriter fos = new FileWriter(JSON_FILE);
 			fos.write(jso.toString());
 			
+			
+			
 			fos.flush();
 			fos.close();
+			
+			if  (! TEST)
+			{
+				dataFile.write(jso.toString());
+				dataFile.write(",\n");
+				dataFile.flush();			
+			}
+
+
 		} catch (IOException e) {
 			System.err.println("Error while writing file \"" + JSON_FILE + "\": " + e.getMessage());
 		}
