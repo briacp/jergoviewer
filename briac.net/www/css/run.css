@@ -5,14 +5,19 @@ h1             { text-align: center; display: none; }
 #heartbeat     { position: absolute; top: 10px; left: -15px; width:100px; text-align:center; font-size: 32pt; }
 #imgContainer  { height: 450px; overflow: hidden; }
 #street        { margin-top: 0px; }
-#info          { position: absolute; line-height:13px; width: 80px; font-size: 12px; top: 90px; left: -40px; text-align: left; padding: 0.5em; background-color: rgba(50, 50, 50, 0.5); border: Solid 2px rgba(255,255,255,.5); }
-#time          { font-family: "Inconsolata", monospace; background-color: rgba(22, 22, 22, 0.5); border: Solid 1px #FFF; border-top: 0; padding: 0.1em 0.2em; }
-#distance      { font-family: "Inconsolata", monospace; position: absolute; top: 5px; right: 20px; border: Solid 1px #FFF; background-color: rgba(200, 200, 200, 0.5); text-align: left; font-size: 18pt; padding: .1em .2em; }
-.center1       { position: absolute; left:  50%; top: 0; }
+#info          { display: none; position: absolute; line-height:13px; width: 80px; font-size: 12px; top: 90px; left: -40px; text-align: left; padding: 0.5em; background-color: rgba(50, 50, 50, 0.5); border: Solid 2px rgba(255,255,255,.5); }
+.fixed         { font-family: "Inconsolata", monospace; }
+#time          { background-color: rgba(22, 22, 22, 0.5); border: Solid 1px #FFF; border-top: 0; padding: 0.1em 0.2em; }
+#time hr       { margin: 1px }
+#distance      { position: absolute; top: 5px; right: 20px; border: Solid 1px #FFF; background-color: rgba(200, 200, 200, 0.5); text-align: left; font-size: 18pt; padding: .1em .2em; }
+.center1       { position: absolute; left:  50%; }
 .center2       { position: relative; left: -50%; }
-#controls      { position: absolute; bottom: 20px; right: 200px; }
+#controls      { position: absolute; top: 245px; right: -50px; }
+#controls button { float: left; clear: left; font-size: 10pt; width: 50px; }
+#controls button span { display: none; }
 #map           { position: absolute; top: 50px; right: -120px; width: 250px;height: 175px; border: Solid 2px rgba(255,255,255,.5);}
-
-dl { width:100%; margin:0; padding:0; overflow:hidden; }
-dt { float:left; width:50%; text-decoration: underline; }
-dd { float:left; margin:0; padding:0; width:50%; }
+#sparks        {  position: absolute; bottom: 0px; left: 0px;  width: 75%; margin: 0 0 0 11%; height: 95px;}
+#share         { display: none; }
+dl             { width:100%; margin:0; padding:0; overflow:hidden; }
+dt             { float:left; width:50%; text-decoration: underline; }
+dd             { float:left; margin:0; padding:0; width:50%; }
